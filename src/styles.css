@@ -84,3 +84,12 @@ body { background: #f4f9fd; }
 .wrong .feedback-icon { background: #e06b68; }
 .below-viewer, .tip { color: #64809a; }
 .source-note { color: #7d98ad; }
+.viewer { background: radial-gradient(ellipse at 50% 44%, rgba(255,255,255,.9), transparent 58%), #e3e6ea; }
+.view-controls { position: absolute; z-index: 4; top: 48px; left: 18px; display: flex; gap: 4px; padding: 4px; border: 1px solid #c3d4e1; border-radius: 7px; background: rgba(255,255,255,.9); box-shadow: 0 5px 14px rgba(35,75,105,.1); }
+.view-controls button { min-height: 28px; padding: 0 8px; border-radius: 4px; color: #52718b; background: transparent; font: 10px 'DM Mono', monospace; }
+.view-controls button:hover, .view-controls button.active { color: #fff; background: #1769aa; }
+.view-controls .center-view { display: grid; place-items: center; width: 28px; padding: 0; color: #1769aa; border-right: 1px solid #d7e7f2; border-radius: 3px; }
+.view-controls .center-view:hover { color: #fff; }
+.prompt-name strong { color: #075da8; }
+.feedback-toast.wrong .feedback-icon { color: #fff; }
+@media (max-width: 700px) { .view-controls { top: 47px; left: 10px; right: 10px; overflow-x: auto; }.view-controls button { flex: 1; white-space: nowrap; } }
