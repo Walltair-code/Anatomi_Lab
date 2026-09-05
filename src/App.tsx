@@ -14,60 +14,55 @@ const stlFiles = import.meta.glob('/Skeleton/**/*.stl', { eager: true, query: '?
 const stlEntries = Object.entries(stlFiles).sort(([left], [right]) => left.localeCompare(right));
 
 function labelFromFile(path: string) {
-  return path.split('/').pop()?.replace(/\.stl$/i, '').replace(/_/g, ' ') ?? 'Skelettdel';
-}
-
-function sideName(side: string | undefined) {
-  return side === 'L' ? { swedish: 'vänster', latin: 'sinister' } : { swedish: 'höger', latin: 'dexter' };
+  return path.split('/').pop()?.replace(/\.stl$/i, '') ?? 'Skelettdel';
 }
 
 function translateStlName(label: string) {
-  const normalized = label.replace(/([LR])(?:_\d+)+$/, '$1');
-  const side = normalized.match(/(?:^|_)(L|R)$/)?.[1];
-  const sideLabel = sideName(side);
-  const sideSuffix = side ? `, ${sideLabel.latin}` : '';
-  const sideSwedish = side ? ` ${sideLabel.swedish}` : '';
-  const numbered = normalized.match(/^(?:Distal|Intermediate|Proximal)_Phalange_(\d)(?:L|R)?$/);
-  const ordinalSwedish = ['första', 'andra', 'tredje', 'fjärde', 'femte', 'sjätte', 'sjunde', 'åttonde', 'nionde', 'tionde', 'elfte', 'tolvte'];
-  const romanNumeral = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-
-  if (numbered) {
-    const number = numbered[1];
-    const section = normalized.startsWith('Distal') ? ['ytterfalang', 'phalanx distalis'] : normalized.startsWith('Intermediate') ? ['mellanfalang', 'phalanx media'] : ['proximala falang', 'phalanx proximalis'];
-    return { swedishName: `${section[0]} ${number}${sideSwedish}`, latinName: `${section[1]} ${number}${sideSuffix}` };
+  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+  const ordinal = ['första', 'andra', 'tredje', 'fjärde', 'femte', 'sjätte', 'sjunde', 'åttonde', 'nionde', 'tionde', 'elfte', 'tolvte'];
+  const side = (value?: string) => value === 'L' ? { swedish: 'vänster', latin: 'sinister' } : { swedish: 'höger', latin: 'dexter' };
+  const sideSuffix = (value?: string) => value ? { swedish: ` ${side(value).swedish}`, latin: `, ${side(value).latin}` } : { swedish: '', latin: '' };
+  const phalanx = label.match(/^(Distal|Intermediate|Proximal)_Phalange_(\d)([LR])(?:_\d+)*$/);
+  if (phalanx) {
+    const section = phalanx[1] === 'Distal' ? ['distala falangen', 'phalanx distalis'] : phalanx[1] === 'Intermediate' ? ['mellanfalangen', 'phalanx media'] : ['proximala falangen', 'phalanx proximalis'];
+    const suffix = sideSuffix(phalanx[3]);
+    return { swedishName: `${section[0]} ${roman[Number(phalanx[2]) - 1]}${suffix.swedish}`, latinName: `${section[1]} ${roman[Number(phalanx[2]) - 1]}${suffix.latin}` };
   }
-
-  const vertebraMatch = normalized.match(/^(Cervical|Thoracic|Lumbar)_(\d+)$/);
-  if (vertebraMatch) {
-    const type = vertebraMatch[1];
-    const index = Number(vertebraMatch[2]) - 1;
-    const swedishType = type === 'Cervical' ? 'halskota' : type === 'Thoracic' ? 'bröstkota' : 'ländkota';
-    const latinType = type === 'Cervical' ? 'vertebra cervicalis' : type === 'Thoracic' ? 'vertebra thoracica' : 'vertebra lumbalis';
-    return { swedishName: `${ordinalSwedish[index]} ${swedishType}`, latinName: `${latinType} ${romanNumeral[index]}` };
+  const vertebra = label.match(/^(Cervical|Thoracic|Lumbar)_(\d+)$/);
+  if (vertebra) {
+    const index = Number(vertebra[2]) - 1;
+    const names = vertebra[1] === 'Cervical' ? ['halskota', 'vertebra cervicalis'] : vertebra[1] === 'Thoracic' ? ['bröstkota', 'vertebra thoracica'] : ['ländkota', 'vertebra lumbalis'];
+    return { swedishName: `${ordinal[index]} ${names[0]}`, latinName: `${names[1]} ${roman[index]}` };
   }
-
-  const sacrumMatch = normalized.match(/^Sacrum_(\d+)$/);
-  if (sacrumMatch) {
-    const index = Number(sacrumMatch[1]) - 1;
-    return { swedishName: `${ordinalSwedish[index]} korsbenet`, latinName: `Os sacrum ${romanNumeral[index]}` };
+  const rib = label.match(/^R([LR])(\d+)$/);
+  if (rib) return { swedishName: `${ordinal[Number(rib[2]) - 1]} revben ${side(rib[1]).swedish}`, latinName: `costa ${roman[Number(rib[2]) - 1]}, ${side(rib[1]).latin}` };
+  const namedRib = label.match(/^R([LR])([1-9]|1[0-2])(?:_\d+)*$/);
+  if (namedRib) return { swedishName: `${ordinal[Number(namedRib[2]) - 1]} revben ${side(namedRib[1]).swedish}`, latinName: `costa ${roman[Number(namedRib[2]) - 1]}, ${side(namedRib[1]).latin}` };
+  const segment = label.match(/^Sacrum_(\d+)$/);
+  if (segment) return { swedishName: `${ordinal[Number(segment[1]) - 1]} korsbenssegment`, latinName: `os sacrum ${roman[Number(segment[1]) - 1]}` };
+  const coccyx = label.match(/^Coccygeal_(\d+)$/);
+  if (coccyx) return { swedishName: `${ordinal[Number(coccyx[1]) - 1]} svanskota`, latinName: `vertebra coccygea ${roman[Number(coccyx[1]) - 1]}` };
+  const ray = label.match(/^(Metacarpal|Metatarsal)_(\d)([LR])$/);
+  if (ray) {
+    const isHand = ray[1] === 'Metacarpal';
+    const suffix = sideSuffix(ray[3]);
+    return { swedishName: `${isHand ? 'mellanhandsben' : 'mellanfotsben'} ${roman[Number(ray[2]) - 1]}${suffix.swedish}`, latinName: `${isHand ? 'os metacarpale' : 'os metatarsale'} ${roman[Number(ray[2]) - 1]}${suffix.latin}` };
   }
-
   const names: Record<string, [string, string]> = {
-    Skull: ['Skalle', 'Cranium'], Skull_1: ['Skalle', 'Cranium'],
-    Mandible: ['Underkäke', 'Mandibula'], Maxilla: ['Överkäke', 'Maxilla'], Hyoid: ['Tungben', 'Os hyoideum'],
-    Calcaneus: ['Hälben', 'Calcaneus'], Cuboid: ['Tärningsben', 'Os cuboideum'], Navicular: ['Båtben', 'Os naviculare'], Talus: ['Språngben', 'Talus'],
-    Medial_Cuneiform: ['Mediala kilbenet', 'Os cuneiforme mediale'], Intermediate_Cuneiform: ['Mellersta kilbenet', 'Os cuneiforme intermedium'], Lateral_Cuneiform: ['Laterala kilbenet', 'Os cuneiforme laterale'],
-    Metatarsal: ['Mellanfotsben', 'Os metatarsale'], Metacarpal: ['Mellanhandsben', 'Os metacarpale'],
-    Capitate: ['Huvudben', 'Os capitatum'], Hamate: ['Hakben', 'Os hamatum'], Lunate: ['Månben', 'Os lunatum'], Pisiform: ['Ärtben', 'Os pisiforme'], Scaphoid: ['Båtben', 'Os scaphoideum'], Trapezium: ['Stora månghörningsbenet', 'Os trapezium'], Trapezoid: ['Lilla månghörningsbenet', 'Os trapezoideum'], Triquetral: ['Trekantben', 'Os triquetrum'],
-    Clavicle: ['Nyckelben', 'Clavicula'], Femur: ['Lårben', 'Femur'], Fibula: ['Vadben', 'Fibula'], Humerus: ['Överarmsben', 'Humerus'], Patella: ['Knäskål', 'Patella'], Radius: ['Strålben', 'Radius'], Scapula: ['Skulderblad', 'Scapula'], Tibia: ['Skenben', 'Tibia'], Ulna: ['Armbågsben', 'Ulna'],
-    Left_Hip: ['Vänster höftben', 'Os coxae sinister'], Right_Hip: ['Höger höftben', 'Os coxae dexter'],
-    Manubrium: ['Bröstbenshandtag', 'Manubrium sterni'], Sternum: ['Bröstben', 'Sternum'], Xiphoid: ['Svärdutskott', 'Processus xiphoideus'],
-    Sacrum_4: ['Korsben, del 4', 'Os sacrum IV'], Sacrum_5: ['Korsben, del 5', 'Os sacrum V'], Coccygeal_1: ['Första svanskotan', 'Vertebra coccygea I'], Coccygeal_2: ['Andra svanskotan', 'Vertebra coccygea II'], Coccygeal_3: ['Tredje svanskotan', 'Vertebra coccygea III'], Coccygeal_4: ['Fjärde svanskotan', 'Vertebra coccygea IV'],
+    Skull: ['Skalle', 'cranium'], Skull_1: ['Skalle', 'cranium'], Mandible: ['Underkäke', 'mandibula'], Maxilla: ['Överkäke', 'maxilla'], Hyoid: ['Tungben', 'os hyoideum'],
+    Calcaneus: ['Hälben', 'calcaneus'], Cuboid: ['Tärningsben', 'os cuboideum'], Navicular: ['Båtben', 'os naviculare'], Talus: ['Språngben', 'talus'],
+    Medial_Cuneiform: ['Mediala kilbenet', 'os cuneiforme mediale'], Intermediate_Cuneiform: ['Mellersta kilbenet', 'os cuneiforme intermedium'], Lateral_Cuneiform: ['Laterala kilbenet', 'os cuneiforme laterale'],
+    Capitate: ['Huvudben', 'os capitatum'], Hamate: ['Hakben', 'os hamatum'], Lunate: ['Månben', 'os lunatum'], Pisiform: ['Ärtben', 'os pisiforme'], Scaphoid: ['Båtben', 'os scaphoideum'], Trapezium: ['Stora månghörningsbenet', 'os trapezium'], Trapezoid: ['Lilla månghörningsbenet', 'os trapezoideum'], Triquetral: ['Trekantben', 'os triquetrum'],
+    Clavicle: ['Nyckelben', 'clavicula'], Femur: ['Lårben', 'femur'], Fibula: ['Vadben', 'fibula'], Humerus: ['Överarmsben', 'humerus'], Patella: ['Knäskål', 'patella'], Radius: ['Strålben', 'radius'], Scapula: ['Skulderblad', 'scapula'], Tibia: ['Skenben', 'tibia'], Ulna: ['Armbågsben', 'ulna'],
+    Left_Hip: ['Vänster höftben', 'os coxae sinister'], Right_Hip: ['Höger höftben', 'os coxae dexter'], Manubrium: ['Bröstbenshandtag', 'manubrium sterni'], Sternum: ['Bröstben', 'sternum'], Xiphoid: ['Svärdutskott', 'processus xiphoideus'],
   };
-  const rib = normalized.match(/^R([LR])(\d+)$/);
-  if (rib) return { swedishName: `${rib[2]}:e revbenet ${rib[1] === 'L' ? 'vänster' : 'höger'}`, latinName: `Costa ${rib[2]}${rib[1] === 'L' ? ' sinistra' : ' dextra'}` };
-  const match = Object.entries(names).find(([key]) => normalized.startsWith(key));
-  if (match) return { swedishName: `${match[1][0]}${sideSwedish}`, latinName: `${match[1][1]}${sideSuffix}` };
+  const sided = label.match(/^(.+)_([LR])(?:_\d+)*$/);
+  const base = sided?.[1] ?? label;
+  const match = names[base] ?? names[label];
+  if (match) {
+    const suffix = sideSuffix(sided?.[2]);
+    return { swedishName: `${match[0]}${suffix.swedish}`, latinName: `${match[1]}${suffix.latin}` };
+  }
   return { swedishName: label, latinName: label };
 }
 
@@ -90,6 +85,7 @@ function makePart(path: string): AnatomyStructure {
 }
 
 const stlParts = stlEntries.map(([path]) => ({ path, part: makePart(path) }));
+const shuffleStructures = (structures: AnatomyStructure[]) => [...structures].sort(() => Math.random() - 0.5);
 const assemblyScale = 5.05 / 1440.959877;
 const assemblyCenter: [number, number, number] = [-0.006012, -115.477008, 650.000042];
 
@@ -133,8 +129,9 @@ function App() {
   const [explored, setExplored] = useState<AnatomyStructure | null>(null);
   const [seconds, setSeconds] = useState(42);
   const [roundDone, setRoundDone] = useState(false);
+  const [questionSet, setQuestionSet] = useState<AnatomyStructure[]>(() => shuffleStructures(stlParts.map(({ part }) => part)));
 
-  const questions = useMemo(() => rematchQuestions ?? skeletonStructures.filter((structure) => difficulty === 'beginner' ? structure.difficulty === 'beginner' : difficulty === 'intermediate' ? structure.difficulty !== 'advanced' : true).slice(0, 10), [difficulty, rematchQuestions]);
+  const questions = useMemo(() => rematchQuestions ?? questionSet, [questionSet, rematchQuestions]);
   const question = questions[questionIndex % questions.length];
   const progress = Math.min(((questionIndex + (roundDone ? 1 : 0)) / questions.length) * 100, 100);
 
@@ -175,7 +172,7 @@ function App() {
   };
 
   const restart = () => {
-    setQuestionIndex(0); setSelectedId(null); setFeedback(null); setMissed([]); setRematchQuestions(null); setScore(0); setSeconds(0); setRoundDone(false);
+    setQuestionIndex(0); setSelectedId(null); setFeedback(null); setMissed([]); setRematchQuestions(null); setQuestionSet(shuffleStructures(stlParts.map(({ part }) => part))); setScore(0); setSeconds(0); setRoundDone(false);
   };
 
   const startRematch = () => {
@@ -194,7 +191,8 @@ function App() {
         <aside className="sidebar">
           <div className="eyebrow">Dagens pass</div>
           <h1>Bygg din<br /><em>anatomiska</em><br />blick.</h1>
-          <p className="intro">Utforska skelettet i en riktig 3D-modell eller testa vad som sitter kvar inför tentan.</p>
+          <p className="intro">Lär dig skelettets namn genom att koppla ihop svensk terminologi, latinsk nomenklatur och anatomisk position.</p>
+          <div className="learning-goal"><BookOpen size={15} /><div><strong>Lärandemål</strong><span>Identifiera ben, kotor och skelettets delregioner.</span></div></div>
           <div className="mode-tabs"><button className={mode === 'quiz' ? 'active' : ''} onClick={() => setMode('quiz')}><Target size={16} /> Quiz</button><button className={mode === 'explore' ? 'active' : ''} onClick={() => setMode('explore')}><BookOpen size={16} /> Utforska</button></div>
           <div className="control-section"><div className="section-label">KATEGORI</div><div className="category-row"><div className="category-icon"><Layers3 size={17} /></div><div><strong>Skelett</strong><small>{stlParts.length} separata STL-delar</small></div><button className="icon-button" aria-label="Visa eller dölj skelett" onClick={() => setShowSkeleton((value) => !value)}>{showSkeleton ? <Eye size={17} /> : <EyeOff size={17} />}</button></div></div>
           <div className="control-section"><div className="section-label">SVÅRIGHETSGRAD</div><div className="difficulty-list">{(['beginner', 'intermediate', 'advanced'] as Difficulty[]).map((level) => <button key={level} className={difficulty === level ? 'selected' : ''} onClick={() => { setDifficulty(level); restart(); }}><span className="difficulty-dot" />{difficultyLabel[level]}<ChevronRight size={15} /></button>)}</div></div>
