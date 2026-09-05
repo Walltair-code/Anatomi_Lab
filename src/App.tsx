@@ -88,7 +88,7 @@ function makePart(path: string): AnatomyStructure {
 
 const stlParts = stlEntries.map(([path]) => ({ path, part: makePart(path) }));
 const shuffleStructures = (structures: AnatomyStructure[]) => [...structures].sort(() => Math.random() - 0.5);
-const assemblyScale = 5.05 / 1440.959877;
+const assemblyScale = 4.55 / 1440.959877;
 const assemblyCenter: [number, number, number] = [-0.006012, -115.477008, 650.000042];
 
 function StlPartMesh({ url, entry, selectedId, feedback, revealId, onSelect }: { url: string; entry: { path: string; part: AnatomyStructure }; selectedId: string | null; feedback: Feedback; revealId: string | null; onSelect: (structure: AnatomyStructure) => void }) {
@@ -108,6 +108,8 @@ function CameraRig({ view, resetToken, focusName, controlsRef }: { view: ViewAng
       front: [0, 0, 12], left: [-12, 0, 0], right: [12, 0, 0], top: [0, 12, 0], back: [0, 0, -12],
     };
     camera.position.set(...positions[view]);
+    controlsRef.current?.target.set(0, 0, 0);
+    controlsRef.current?.update();
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
     if (!focusName) return;
@@ -141,7 +143,7 @@ function SkeletonMap({ selectedId, feedback, onSelect, revealId, view, resetToke
         <group rotation={[-Math.PI / 2, 0, 0]} scale={assemblyScale} position={[-assemblyCenter[0] * assemblyScale, -assemblyCenter[2] * assemblyScale, assemblyCenter[1] * assemblyScale]}>
           {stlEntries.map(([path, url], index) => <Suspense key={path} fallback={null}><StlPartMesh url={url} entry={stlParts[index]} selectedId={selectedId} feedback={feedback} revealId={revealId} onSelect={onSelect} /></Suspense>)}
         </group>
-        <OrbitControls ref={controlsRef} enablePan enableZoom minDistance={4} maxDistance={14} />
+        <OrbitControls ref={controlsRef} enablePan enableZoom enableDamping={false} minDistance={4} maxDistance={14} />
       </Canvas>
     </div>
   );
@@ -199,6 +201,8 @@ function App() {
   };
 
   const nextQuestion = () => {
+    setView('front');
+    setResetToken((value) => value + 1);
     if (questionIndex + 1 >= questions.length) setRoundDone(true);
     else {
       setQuestionIndex((value) => value + 1);
