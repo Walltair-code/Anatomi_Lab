@@ -118,7 +118,7 @@ function SkeletonMap({ selectedId, feedback, onSelect, revealId, view, resetToke
     <div className="stl-stage" role="group" aria-label="Interaktiv 3D-modell av skelettet">
       <Canvas camera={{ position: [0, 0, 12], fov: 34 }} dpr={[1, 1.25]}>
         <CameraRig view={view} resetToken={resetToken} />
-        <color attach="background" args={['#e3e6ea']} />
+        <color attach="background" args={['#1b2025']} />
         <ambientLight intensity={2.4} />
         <directionalLight position={[4, 5, 7]} intensity={2.8} color="#ffffff" />
         <directionalLight position={[-4, 2, 3]} intensity={1.1} color="#9dc9e8" />

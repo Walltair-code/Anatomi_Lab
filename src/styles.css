@@ -93,3 +93,9 @@ body { background: #f4f9fd; }
 .prompt-name strong { color: #075da8; }
 .feedback-toast.wrong .feedback-icon { color: #fff; }
 @media (max-width: 700px) { .view-controls { top: 47px; left: 10px; right: 10px; overflow-x: auto; }.view-controls button { flex: 1; white-space: nowrap; } }
+.viewer-layout { background: #1b2025; }
+.viewer { background: radial-gradient(ellipse at 50% 44%, rgba(76,92,108,.32), transparent 58%), #1b2025; }
+.stl-loading { color: #c3d0db; background: #1b2025; }
+.stl-loading strong { color: #8fc7ec; }
+.stl-loading span { color: #9eafbd; }
+.loading-ring { border-color: #3c4b58; border-top-color: #8fc7ec; }
