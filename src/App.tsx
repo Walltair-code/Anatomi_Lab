@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 import { Activity, BookOpen, Check, ChevronRight, CircleHelp, Eye, EyeOff, Layers3, RotateCcw, SkipForward, Sparkles, Target, TimerReset, Trophy, X } from 'lucide-react';
 import { difficultyLabel, skeletonStructures, type AnatomyStructure, type Difficulty } from './data/skeleton';
 
-const feedbackColors = { correct: '#b8e986', wrong: '#ff9e8b' };
+const feedbackColors = { correct: '#1d9b78', wrong: '#e06b68' };
 
 type Mode = 'quiz' | 'explore';
 type Feedback = 'correct' | 'wrong' | null;
@@ -92,7 +92,7 @@ const assemblyCenter: [number, number, number] = [-0.006012, -115.477008, 650.00
 function StlPartMesh({ url, entry, selectedId, feedback, revealId, onSelect }: { url: string; entry: { path: string; part: AnatomyStructure }; selectedId: string | null; feedback: Feedback; revealId: string | null; onSelect: (structure: AnatomyStructure) => void }) {
   const geometry = useLoader(STLLoader, url);
   const isSelected = selectedId === entry.part.id || revealId === entry.part.id;
-  const color = feedback === 'correct' && isSelected ? feedbackColors.correct : feedback === 'wrong' && isSelected ? feedbackColors.wrong : isSelected ? '#d4f56a' : '#d8dfcc';
+  const color = feedback === 'correct' && isSelected ? feedbackColors.correct : feedback === 'wrong' && isSelected ? feedbackColors.wrong : isSelected ? '#1769aa' : '#dbe9f6';
   return <mesh name={entry.part.meshName} geometry={geometry} onClick={(event) => { event.stopPropagation(); onSelect(entry.part); }}>
     <meshStandardMaterial color={color} roughness={0.7} metalness={0.02} />
   </mesh>;
@@ -102,10 +102,10 @@ function SkeletonMap({ selectedId, feedback, onSelect, revealId }: { selectedId:
   return (
     <div className="stl-stage" role="group" aria-label="Interaktiv 3D-modell av skelettet">
       <Canvas camera={{ position: [0, 0, 12], fov: 34 }} dpr={[1, 1.25]}>
-        <color attach="background" args={['#101916']} />
-        <ambientLight intensity={1.8} />
-        <directionalLight position={[4, 5, 7]} intensity={2.8} color="#f4f0d5" />
-        <directionalLight position={[-4, 2, 3]} intensity={1.1} color="#8bb9a4" />
+        <color attach="background" args={['#eaf4fb']} />
+        <ambientLight intensity={2.4} />
+        <directionalLight position={[4, 5, 7]} intensity={2.8} color="#ffffff" />
+        <directionalLight position={[-4, 2, 3]} intensity={1.1} color="#9dc9e8" />
         <group rotation={[-Math.PI / 2, 0, 0]} scale={assemblyScale} position={[-assemblyCenter[0] * assemblyScale, -assemblyCenter[2] * assemblyScale, assemblyCenter[1] * assemblyScale]}>
           {stlEntries.map(([path, url], index) => <Suspense key={path} fallback={null}><StlPartMesh url={url} entry={stlParts[index]} selectedId={selectedId} feedback={feedback} revealId={revealId} onSelect={onSelect} /></Suspense>)}
         </group>

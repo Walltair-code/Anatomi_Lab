@@ -38,3 +38,49 @@ button { font: inherit; color: inherit; border: 0; cursor: pointer; }
 .map-structure:hover, .map-structure.selected { z-index: 3; transform: scale(1.3); border-color: var(--structure-color); background: rgba(52,75,57,.94); }.map-caption { position: absolute; bottom: 0; left: 50%; color: #506057; transform: translateX(-50%); font: 9px 'DM Mono', monospace; letter-spacing: .12em; white-space: nowrap; }
 @media (max-width: 700px) { .skeleton-map { inset-inline: 3%; }.map-caption { font-size: 8px; } }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Light study theme */
+:root { color: #17324d; background: #f4f9fd; }
+body { background: #f4f9fd; }
+.app-shell { color: #17324d; background: radial-gradient(circle at 85% 8%, rgba(142, 203, 239, .3), transparent 32%), linear-gradient(135deg, #f8fcff 0%, #eef7fd 55%, #f8fbff 100%); }
+.topbar { border-color: #d7e7f2; background: rgba(255,255,255,.82); }
+.brand-mark { color: #fff; background: #1769aa; }
+.brand strong span { color: #1769aa; }
+.brand small, .topbar-meta, .intro, .eyebrow, .section-label, .prompt-label { color: #64809a; }
+.live-dot { background: #1d9b78; box-shadow: 0 0 0 4px rgba(29,155,120,.12); }
+.avatar { border-color: #b9d2e4; color: #1769aa; }
+.sidebar { border-color: #d7e7f2; background: rgba(255,255,255,.56); }
+.sidebar h1 em { color: #1769aa; }
+.mode-tabs { background: #e1eff9; }
+.mode-tabs button { color: #64809a; }
+.mode-tabs button.active { color: #fff; background: #1769aa; }
+.control-section { border-color: #d7e7f2; }
+.category-icon { color: #1769aa; background: #dceefa; }
+.category-row small, .difficulty-list button, .prompt-hint { color: #6d879d; }
+.difficulty-list button.selected { color: #17324d; }
+.difficulty-dot { border-color: #8ba9bf; }
+.selected .difficulty-dot { background: #1769aa; border-color: #1769aa; }
+.stat-pill { border-color: #cfe1ee; color: #53718b; background: rgba(255,255,255,.7); }
+.stat-pill svg { color: #1769aa; }
+.viewer-layout { border-color: #cfe1ee; background: #eaf4fb; box-shadow: 0 12px 35px rgba(47,102,143,.08); }
+.viewer { background: radial-gradient(ellipse at 50% 44%, rgba(143,202,235,.5), transparent 58%), #eaf4fb; }
+.viewer-note, .axis-label { color: #66859f; }
+.quiz-panel { border-color: #d7e7f2; background: rgba(255,255,255,.92); }
+.question-progress, .progress-bar { background: #dcebf5; }
+.question-progress i, .progress-bar i { background: #1769aa; }
+.prompt-name span { color: #1769aa; }
+.next-button { color: #fff; background: #1769aa; }
+.skip-button, .settings-link { color: #52718b; }
+.learning-goal { border-color: #b8d9ed; border-left-color: #1769aa; background: #edf7fd; color: #1769aa; }
+.learning-goal strong { color: #17324d; }
+.learning-goal span { color: #64809a; }
+.stl-loading { color: #53718b; background: #eaf4fb; }
+.stl-loading strong { color: #1769aa; }
+.stl-loading span { color: #6d879d; }
+.loading-ring { border-color: #c7dfef; border-top-color: #1769aa; }
+.feedback-toast.correct { background: rgba(232,250,244,.94); border-color: #9ad5c2; }
+.feedback-toast.wrong { background: rgba(255,241,240,.96); border-color: #efb1ae; }
+.feedback-icon { color: #fff; background: #1d9b78; }
+.wrong .feedback-icon { background: #e06b68; }
+.below-viewer, .tip { color: #64809a; }
+.source-note { color: #7d98ad; }
