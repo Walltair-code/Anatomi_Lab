@@ -1,7 +1,8 @@
 import { Canvas, useLoader, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
-import { Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, BookOpen, Check, ChevronRight, CircleHelp, Crosshair, Eye, EyeOff, Layers3, RotateCcw, SkipForward, Sparkles, Target, TimerReset, Trophy, X } from 'lucide-react';
 import { difficultyLabel, skeletonStructures, type AnatomyStructure, type Difficulty } from './data/skeleton';
 
@@ -100,8 +101,8 @@ function StlPartMesh({ url, entry, selectedId, feedback, revealId, onSelect }: {
   </mesh>;
 }
 
-function CameraRig({ view, resetToken }: { view: ViewAngle; resetToken: number }) {
-  const { camera } = useThree();
+function CameraRig({ view, resetToken, focusName, controlsRef }: { view: ViewAngle; resetToken: number; focusName: string | null; controlsRef: { current: any } }) {
+  const { camera, scene } = useThree();
   useEffect(() => {
     const positions: Record<ViewAngle, [number, number, number]> = {
       front: [0, 0, 12], left: [-12, 0, 0], right: [12, 0, 0], top: [0, 12, 0], back: [0, 0, -12],
@@ -109,15 +110,30 @@ function CameraRig({ view, resetToken }: { view: ViewAngle; resetToken: number }
     camera.position.set(...positions[view]);
     camera.lookAt(0, 0, 0);
     camera.updateProjectionMatrix();
-  }, [camera, view, resetToken]);
+    if (!focusName) return;
+    const focusTimer = window.setTimeout(() => {
+      const targetObject = scene.getObjectByName(focusName);
+      if (!targetObject) return;
+      const bounds = new THREE.Box3().setFromObject(targetObject);
+      const target = bounds.getCenter(new THREE.Vector3());
+      const sphere = bounds.getBoundingSphere(new THREE.Sphere());
+      const direction = camera.position.clone().sub(target).normalize();
+      camera.position.copy(target).add(direction.multiplyScalar(Math.max(sphere.radius * 2.8, 1.5)));
+      camera.lookAt(target);
+      controlsRef.current?.target.copy(target);
+      controlsRef.current?.update();
+    }, 1000);
+    return () => window.clearTimeout(focusTimer);
+  }, [camera, scene, view, resetToken, focusName, controlsRef]);
   return null;
 }
 
-function SkeletonMap({ selectedId, feedback, onSelect, revealId, view, resetToken }: { selectedId: string | null; feedback: Feedback; onSelect: (structure: AnatomyStructure) => void; revealId: string | null; view: ViewAngle; resetToken: number }) {
+function SkeletonMap({ selectedId, feedback, onSelect, revealId, view, resetToken, focusName }: { selectedId: string | null; feedback: Feedback; onSelect: (structure: AnatomyStructure) => void; revealId: string | null; view: ViewAngle; resetToken: number; focusName: string | null }) {
+  const controlsRef = useRef<any>(null);
   return (
     <div className="stl-stage" role="group" aria-label="Interaktiv 3D-modell av skelettet">
       <Canvas camera={{ position: [0, 0, 12], fov: 34 }} dpr={[1, 1.25]}>
-        <CameraRig view={view} resetToken={resetToken} />
+        <CameraRig view={view} resetToken={resetToken} focusName={focusName} controlsRef={controlsRef} />
         <color attach="background" args={['#1b2025']} />
         <ambientLight intensity={2.4} />
         <directionalLight position={[4, 5, 7]} intensity={2.8} color="#ffffff" />
@@ -125,7 +141,7 @@ function SkeletonMap({ selectedId, feedback, onSelect, revealId, view, resetToke
         <group rotation={[-Math.PI / 2, 0, 0]} scale={assemblyScale} position={[-assemblyCenter[0] * assemblyScale, -assemblyCenter[2] * assemblyScale, assemblyCenter[1] * assemblyScale]}>
           {stlEntries.map(([path, url], index) => <Suspense key={path} fallback={null}><StlPartMesh url={url} entry={stlParts[index]} selectedId={selectedId} feedback={feedback} revealId={revealId} onSelect={onSelect} /></Suspense>)}
         </group>
-        <OrbitControls enablePan enableZoom minDistance={4} maxDistance={14} />
+        <OrbitControls ref={controlsRef} enablePan enableZoom minDistance={4} maxDistance={14} />
       </Canvas>
     </div>
   );
@@ -147,6 +163,7 @@ function App() {
   const [roundDone, setRoundDone] = useState(false);
   const [view, setView] = useState<ViewAngle>('front');
   const [resetToken, setResetToken] = useState(0);
+  const [autoAdvance, setAutoAdvance] = useState(true);
   const [questionSet, setQuestionSet] = useState<AnatomyStructure[]>(() => shuffleStructures(stlParts.map(({ part }) => part)));
 
   const questions = useMemo(() => rematchQuestions ?? questionSet, [questionSet, rematchQuestions]);
@@ -190,6 +207,12 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    if (!autoAdvance || !feedback || mode !== 'quiz') return;
+    const advanceTimer = window.setTimeout(nextQuestion, 5000);
+    return () => window.clearTimeout(advanceTimer);
+  }, [autoAdvance, feedback, mode, questionIndex, questions.length]);
+
   const restart = () => {
     setQuestionIndex(0); setSelectedId(null); setFeedback(null); setMissed([]); setRematchQuestions(null); setQuestionSet(shuffleStructures(stlParts.map(({ part }) => part))); setScore(0); setSeconds(0); setRoundDone(false);
   };
@@ -215,13 +238,13 @@ function App() {
           <div className="mode-tabs"><button className={mode === 'quiz' ? 'active' : ''} onClick={() => setMode('quiz')}><Target size={16} /> Quiz</button><button className={mode === 'explore' ? 'active' : ''} onClick={() => setMode('explore')}><BookOpen size={16} /> Utforska</button></div>
           <div className="control-section"><div className="section-label">KATEGORI</div><div className="category-row"><div className="category-icon"><Layers3 size={17} /></div><div><strong>Skelett</strong><small>{stlParts.length} separata STL-delar</small></div><button className="icon-button" aria-label="Visa eller dölj skelett" onClick={() => setShowSkeleton((value) => !value)}>{showSkeleton ? <Eye size={17} /> : <EyeOff size={17} />}</button></div></div>
           <div className="control-section"><div className="section-label">SVÅRIGHETSGRAD</div><div className="difficulty-list">{(['beginner', 'intermediate', 'advanced'] as Difficulty[]).map((level) => <button key={level} className={difficulty === level ? 'selected' : ''} onClick={() => { setDifficulty(level); restart(); }}><span className="difficulty-dot" />{difficultyLabel[level]}<ChevronRight size={15} /></button>)}</div></div>
-          <div className="sidebar-bottom"><div className="progress-card"><div className="progress-card-head"><span>Din progression</span><Sparkles size={15} /></div><strong>68<span>%</span></strong><div className="progress-bar"><i style={{ width: '68%' }} /></div><small>+12% sedan förra veckan</small></div><button className="settings-link" onClick={() => setLatinOnly((value) => !value)}><span className={`toggle ${latinOnly ? 'on' : ''}`}><i /></span> Träna bara latin</button></div>
+          <div className="sidebar-bottom"><div className="progress-card"><div className="progress-card-head"><span>Din progression</span><Sparkles size={15} /></div><strong>68<span>%</span></strong><div className="progress-bar"><i style={{ width: '68%' }} /></div><small>+12% sedan förra veckan</small></div><div className="settings-stack"><button className="settings-link" onClick={() => setLatinOnly((value) => !value)}><span className={`toggle ${latinOnly ? 'on' : ''}`}><i /></span> Träna bara latin</button><button className="settings-link" onClick={() => setAutoAdvance((value) => !value)}><span className={`toggle ${autoAdvance ? 'on' : ''}`}><i /></span> Byt fråga automatiskt</button></div></div>
         </aside>
 
         <section className="content">
           <div className="content-header"><div><div className="eyebrow">SKELETT · {mode === 'quiz' ? 'QUIZLÄGE' : 'UTFORSKARLÄGE'}</div><h2>{mode === 'quiz' ? 'Var sitter strukturen?' : 'Klicka och upptäck'}</h2></div><div className="header-actions"><div className="stat-pill"><TimerReset size={15} /><span>{String(Math.floor(seconds / 60)).padStart(2, '0')}:{String(seconds % 60).padStart(2, '0')}</span></div><div className="stat-pill"><Trophy size={15} /><span>{score} rätt</span></div></div></div>
           <div className="viewer-layout">
-            <div className={`viewer ${showSkeleton ? '' : 'viewer-muted'}`}><div className="viewer-note"><Target size={14} /> Dra för att rotera · scrolla för att zooma</div><div className="axis-label">STL · 3D</div><div className="view-controls" aria-label="Välj kameravy"><button className="center-view" onClick={() => { setView('front'); setResetToken((value) => value + 1); }} title="Centrera modellen"><Crosshair size={15} /></button>{([['front', 'Fram'], ['left', 'Vänster'], ['right', 'Höger'], ['top', 'Topp'], ['back', 'Bak']] as [ViewAngle, string][]).map(([angle, label]) => <button key={angle} className={view === angle ? 'active' : ''} onClick={() => setView(angle)}>{label}</button>)}</div><Suspense fallback={<div className="stl-loading"><div className="loading-ring" /><strong>Laddar skelettets delar</strong><span>{stlParts.length} separata STL-filer förbereds</span></div>}><SkeletonMap selectedId={selectedId} feedback={feedback} onSelect={selectStructure} revealId={feedback === 'wrong' ? question.id : null} view={view} resetToken={resetToken} /></Suspense>{feedback && mode === 'quiz' && <div className={`feedback-toast ${feedback}`}><div className="feedback-icon">{feedback === 'correct' ? <Check size={20} /> : <X size={20} />}</div><div><strong>{feedback === 'correct' ? 'Rätt svar!' : 'Fel svar'}</strong><span>{feedback === 'correct' ? `${question.latinName} sitter där.` : `Du valde ${selectedStructure?.swedishName ?? 'en annan struktur'}. Rätt svar är markerat grönt.`}</span></div></div>}</div>
+            <div className={`viewer ${showSkeleton ? '' : 'viewer-muted'}`}><div className="viewer-note"><Target size={14} /> Dra för att rotera · scrolla för att zooma</div><div className="axis-label">STL · 3D</div><div className="view-controls" aria-label="Välj kameravy"><button className="center-view" onClick={() => { setView('front'); setResetToken((value) => value + 1); }} title="Centrera modellen"><Crosshair size={15} /></button>{([['front', 'Fram'], ['left', 'Vänster'], ['right', 'Höger'], ['top', 'Topp'], ['back', 'Bak']] as [ViewAngle, string][]).map(([angle, label]) => <button key={angle} className={view === angle ? 'active' : ''} onClick={() => setView(angle)}>{label}</button>)}</div><Suspense fallback={<div className="stl-loading"><div className="loading-ring" /><strong>Laddar skelettets delar</strong><span>{stlParts.length} separata STL-filer förbereds</span></div>}><SkeletonMap selectedId={selectedId} feedback={feedback} onSelect={selectStructure} revealId={feedback === 'wrong' ? question.id : null} view={view} resetToken={resetToken} focusName={feedback === 'wrong' ? question.meshName : null} /></Suspense>{feedback && mode === 'quiz' && <div className={`feedback-toast ${feedback}`}><div className="feedback-icon">{feedback === 'correct' ? <Check size={20} /> : <X size={20} />}</div><div><strong>{feedback === 'correct' ? 'Rätt svar!' : 'Fel svar'}</strong><span>{feedback === 'correct' ? `${question.latinName} sitter där.` : `Du valde ${selectedStructure?.swedishName ?? 'en annan struktur'}. Rätt svar är markerat grönt.`}</span></div></div>}</div>
             <div className="quiz-panel">{mode === 'quiz' && !roundDone ? <><div className="question-meta"><span>FRÅGA {questionIndex + 1} <small>/ {questions.length}</small></span><span>{Math.round(progress)}%</span></div><div className="question-progress"><i style={{ width: `${progress}%` }} /></div><div className="prompt-label">HITTA PÅ MODELLEN</div><div className="prompt-name"><strong>{latinOnly ? question.latinName : question.swedishName}</strong>{!latinOnly && <span>{question.latinName}</span>}</div><p className="prompt-hint">Klicka på rätt del av skelettet. Du kan rotera modellen fritt.</p>{feedback && <button className="next-button" onClick={nextQuestion}>{questionIndex + 1 >= questions.length ? 'Visa resultat' : 'Nästa fråga'} <ChevronRight size={17} /></button>}{!feedback && <button className="skip-button" onClick={() => { setMissed((items) => items.some((item) => item.id === question.id) ? items : [...items, question]); nextQuestion(); }}><SkipForward size={16} /> Hoppa över</button>}</> : roundDone ? <div className="result-state"><div className="result-badge"><Trophy size={24} /></div><div className="eyebrow">RUNDA KLAR</div><h3>{score}<span>/{questions.length}</span></h3><p>Starkt jobbat. Du träffade rätt på {Math.round((score / questions.length) * 100)}% av strukturerna.</p><div className="result-row"><span>Tid</span><strong>{Math.floor(seconds / 60)}m {seconds % 60}s</strong></div><div className="result-row"><span>Missade</span><strong>{missed.length} strukturer</strong></div><div className="result-actions"><button className="next-button" onClick={restart}>Ny runda <RotateCcw size={16} /></button>{missed.length > 0 && <button className="skip-button" onClick={startRematch}>Träna missade <Target size={16} /></button>}</div></div> : <div className="explore-state"><div className="explore-icon"><BookOpen size={24} /></div><div className="eyebrow">UTFORSKA</div><h3>{explored ? explored.swedishName : 'Välj en struktur'}</h3>{explored ? <><span className="latin-large">{explored.latinName}</span><p>{explored.description}</p><div className="tag">{difficultyLabel[explored.difficulty]}</div></> : <p>Klicka på ett ben i modellen för att se namn och funktion.</p>}</div>}
             </div>
           </div>
